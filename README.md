@@ -13,16 +13,21 @@ Goals
 
 What if you could do something like this:
 
+```csharp
     var contactsTable = DynamicTable.Create(
                                     "Person.Contact",   // table
                                     "AdventureWorks",   // connectionstring
                                     "ContactID" );      // primarykey
 
     var contacts = contactsTable.FindByFirstNameAndLastName( "Jay", "Adams" );
+```
 
 Pretty clean, right? Yeah I think so too. But that's not enough, what if we wanted to have the `FirstName` capitalized every time we save a contact? Normally we'd have to override the BeforeSave method in our `Contacts` class. With MassiveRecord it takes 1 line of code:
 
-    DynamicTable.RegisterBeforeSaveFilter( "Person.Contact", user => user.FirstName = user.FirstName.ToUpper() );
+```csharp
+    DynamicTable.RegisterBeforeSaveFilter( "Person.Contact", 
+                                           user => user.FirstName = user.FirstName.ToUpper() );
+```
 
 Yeah, it's *that* easy.
 
