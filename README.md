@@ -22,7 +22,13 @@ What if you could do something like this:
     var contacts = contactsTable.FindByFirstNameAndLastName( "Jay", "Adams" );
 ```
 
-Pretty clean, right? Yeah I think so too. But that's not enough, what if we wanted to have the `FirstName` capitalized every time we save a contact? Normally we'd have to override the BeforeSave method in our `Contacts` class. With MassiveRecord it takes 1 line of code:
+Pretty clean, right? Yeah I think so too. But that's not enough. What if we wanted to find a user by `Email` and `MiddleInitial`? No worries. MassiveRecord has your back.
+
+```csharp
+    var contacts = contactsTable.FindByEmailAndMiddleInitial( "test@test.com", "G" );
+```
+
+Okay... what if we wanted to have the `FirstName` capitalized every time we save a contact? Normally we'd have to override the BeforeSave method in our `Contacts` class. With MassiveRecord it takes 1 line of code:
 
 ```csharp
     DynamicTable.RegisterBeforeSaveFilter( "Person.Contact", 
