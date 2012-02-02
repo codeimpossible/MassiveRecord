@@ -3,6 +3,7 @@
 If you've used [Massive](http://github.com/robconery/massive), you know how awesome it is. But you've probably thought _"This still seems like a lot more code than I really want to have to write"_. I was thinking the same thing.
 
 Goals
+
  * Eliminate the need to create a new class for each Massive "Table"
  * Add awesome functionality from ActiveRecord (ex: `FindBy...` and `Reload`)
  * Add registration for event hooks: BeforeSave, BeforeDelete
