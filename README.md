@@ -13,19 +13,42 @@ Goals
 
 What if you could do something like this:
 
+```csharp
     var contactsTable = DynamicTable.Create(
                                     "Person.Contact",   // table
                                     "AdventureWorks",   // connectionstring
                                     "ContactID" );      // primarykey
 
     var contacts = contactsTable.FindByFirstNameAndLastName( "Jay", "Adams" );
+```
 
-Pretty clean, right? Yeah I think so too. But that's not enough, what if we wanted to have the `FirstName` capitalized every time we save a contact? Normally we'd have to override the BeforeSave method in our `Contacts` class. With MassiveRecord it takes 1 line of code:
+Pretty clean, right? Yeah I think so too. But that's not enough. What if we wanted to find a user by `Email` and `MiddleInitial`? No worries. MassiveRecord has your back.
 
-    DynamicTable.RegisterBeforeSaveFilter( "Person.Contact", user => user.FirstName = user.FirstName.ToUpper() );
+```csharp
+    var contacts = contactsTable.FindByEmailAndMiddleInitial( "test@test.com", "G" );
+```
+
+Okay... what if we wanted to have the `FirstName` capitalized every time we save a contact? Normally we'd have to override the BeforeSave method in our `Contacts` class. With MassiveRecord it takes 1 line of code:
+
+```csharp
+    DynamicTable.RegisterFilter( FilterType.BeforeSave, "Person.Contact",
+                                           user => user.FirstName = user.FirstName.ToUpper() );
+```
 
 Yeah, it's *that* easy.
 
+
+What if you wanted to specify a configuration that MassiveRecord should use everytime it creates a specific table? No problem, we even added a nifty mini DSL to help you out:
+
+```csharp
+    DynamicTable.Configure( c => c.WhenAskedFor("Users").Use( s => {
+        s.ConnectionString = "Test";
+        s.PrimaryKey = "ContactID";
+        s.Table = "Person.Contact";
+    }));
+
+    var usersTable = DynamicTable.Create("Users"); // BOOM!
+```
 
 ## Installation
 
