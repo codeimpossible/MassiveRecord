@@ -38,7 +38,7 @@ Okay... what if we wanted to have the `FirstName` capitalized every time we save
 Yeah, it's *that* easy.
 
 
-What if you wanted to specify a configuration that MassiveRecord should use everytime it creates a specific table? No problem, we even added a nifty mini DSL to help you out:
+What if you wanted to specify a configuration that MassiveRecord should use everytime it creates a specific table? No problem, we even added a nifty mini fluent interface to help you out:
 
 ```csharp
     DynamicTable.Configure( c => c.WhenAskedFor("Users").Use( s => {
