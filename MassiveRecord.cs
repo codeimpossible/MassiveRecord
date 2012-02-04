@@ -12,7 +12,13 @@
     public class MassiveContextBase : DynamicModel {
         private IDictionary<FilterType, List<Action<dynamic>>> bound_filters = null;
 
-        public MassiveContextBase ( string connectionStringName,
+        public MassiveContextBase( MassiveRecord.DynamicTable.ISettings config,
+                                    IDictionary<FilterType, List<Action<dynamic>>> filters = null ) :
+            this( config.ConnectionString, filters ) {
+            TableName = config.Table;
+            PrimaryKeyField = config.PrimaryKey;
+        }
+        public MassiveContextBase( string connectionStringName,
                                     IDictionary<FilterType, List<Action<dynamic>>> filters = null ) :
             base( connectionStringName ) {
             bound_filters = filters ?? new Dictionary<FilterType, List<Action<dynamic>>> {
@@ -21,28 +27,28 @@
                 };
         }
 
-        public void RegisterFilter ( FilterType type, Action<dynamic> filter ) {
-            bound_filters[type].Add( filter );
+        public void RegisterFilter( FilterType type, Action<dynamic> filter ) {
+            bound_filters[ type ].Add( filter );
         }
 
-        public override bool BeforeSave ( dynamic item ) {
-            bound_filters[FilterType.BeforeSave].ForEach( a => a( item ) );
+        public override bool BeforeSave( dynamic item ) {
+            bound_filters[ FilterType.BeforeSave ].ForEach( a => a( item ) );
             return true;
         }
 
-        public override bool BeforeDelete ( dynamic item ) {
-            bound_filters[FilterType.BeforeDelete].ForEach( a => a( item ) );
+        public override bool BeforeDelete( dynamic item ) {
+            bound_filters[ FilterType.BeforeDelete ].ForEach( a => a( item ) );
             return true;
         }
 
-        public override bool TryInvokeMember ( System.Dynamic.InvokeMemberBinder binder, object[] args, out object result ) {
+        public override bool TryInvokeMember( System.Dynamic.InvokeMemberBinder binder, object[] args, out object result ) {
             if( binder.Name.ToLower().StartsWith( "findby" ) ) {
                 var where = new StringBuilder();
                 var method = binder.Name.ToLower().Replace( "findby", "" );
                 var methodColumns = Regex.Split( method, "and" );
 
                 for( int i = 0; i < methodColumns.Length; i++ )
-                    where.AppendFormat( "{0} [{1}] = {2} ", i > 0 ? " and " : "", methodColumns[i], ToSql( args[i] ) );
+                    where.AppendFormat( "{0} [{1}] = {2} ", i > 0 ? " and " : "", methodColumns[ i ], ToSql( args[ i ] ) );
                 result = All( where: where.ToString() );
                 return true;
             }
@@ -56,7 +62,7 @@
             return base.TryInvokeMember( binder, args, out result );
         }
 
-        private string ToSql ( object p ) {
+        private string ToSql( object p ) {
             if( p is String ) return String.Format( "'{0}'", (string)p );
             else if( p is DateTime ) return String.Format( "'{0}'", ( (DateTime)p ).ToString() );
             else return p.ToString();
@@ -69,12 +75,12 @@
 
         private readonly static IDictionary<String, ISettings> settings = new Dictionary<String, ISettings>();
 
-        // interfaces for our "mini DSL"
+        // interfaces for our "mini fluent interface"
         public interface IWhenAskedFor {
-            IUse WhenAskedFor ( string table );
+            IUse WhenAskedFor( string table );
         }
         public interface IUse {
-            ISettings Use ( Action<ISettings> use );
+            ISettings Use( Action<ISettings> use );
         }
         public interface ISettings {
             string Table { get; set; }
@@ -84,36 +90,40 @@
 
         // configurator implements them all we just cast it around
         public class DynamicTableConfigurator : IWhenAskedFor, IUse, ISettings {
-            public IUse WhenAskedFor ( string table ) { return this; }
+            public IUse WhenAskedFor( string table ) { Type = table; return this; }
 
-            public ISettings Use ( Action<ISettings> use ) {
-                use(this);
+            public ISettings Use( Action<ISettings> use ) {
+                use( this );
                 return this;
             }
 
+            public string Type { get; set; }
             public string Table { get; set; }
             public string ConnectionString { get; set; }
             public string PrimaryKey { get; set; }
         }
 
-        public static void Configure ( Func<IWhenAskedFor, ISettings> config ) {
-            var tableSettings = config(new DynamicTableConfigurator());
-            settings.Add( tableSettings.Table, tableSettings );
+        public static void Configure( Func<IWhenAskedFor, ISettings> config ) {
+            var tableSettings = config( new DynamicTableConfigurator() );
+            settings.Add( ( (DynamicTableConfigurator)tableSettings ).Type, tableSettings );
         }
 
-        public static dynamic Create ( string table, string connectionString = null, string primaryKey = "Id" ) {
-            var table_filters = filters.ContainsKey( table ) ? filters[table] : null;
-            return new MassiveContextBase( connectionString, table_filters ) {
+        public static dynamic Create( string table, string connectionString = null, string primaryKey = "Id" ) {
+            var table_filters = filters.ContainsKey( table ) ? filters[ table ] : null;
+            MassiveContextBase context = null;
+            if( settings.ContainsKey( table ) )
+                context = new MassiveContextBase( settings[ table ] );
+            return context ?? new MassiveContextBase( connectionString, table_filters ) {
                 TableName = table,
                 PrimaryKeyField = primaryKey
             };
         }
 
-        public static void RegisterFilter ( FilterType type, string tableName, Action<dynamic> filter ) {
+        public static void RegisterFilter( FilterType type, string tableName, Action<dynamic> filter ) {
             if( filters.ContainsKey( tableName ) ) {
-                if( filters[tableName].ContainsKey( type ) ) {
-                    filters[tableName][type].Add( filter );
-                } else filters[tableName].Add( type, new List<Action<dynamic>>() );
+                if( filters[ tableName ].ContainsKey( type ) ) {
+                    filters[ tableName ][ type ].Add( filter );
+                } else filters[ tableName ].Add( type, new List<Action<dynamic>>() );
             } else filters.Add( tableName, new Dictionary<FilterType, List<Action<dynamic>>> { { type, new List<Action<dynamic>> { filter } } } );
         }
     }
