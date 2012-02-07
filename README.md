@@ -41,13 +41,16 @@ Yeah, it's *that* easy.
 What if you wanted to specify a configuration that MassiveRecord should use everytime it creates a specific table? No problem, we even added a nifty mini fluent interface to help you out:
 
 ```csharp
+    // in your Global.asax or some other startup class, include this code
     DynamicTable.Configure( c => c.WhenAskedFor("Users").Use( s => {
         s.ConnectionString = "Test";
         s.PrimaryKey = "ContactID";
         s.Table = "Person.Contact";
     }));
-
-    var usersTable = DynamicTable.Create("Users"); // BOOM!
+    
+    // in your controller or other class file do the following
+    var usersTable = DynamicTable.Create("Users"); 
+    var users = usersTable.FindByEmail("myuser@test.com"); // BOOM!
 ```
 
 ## Installation
