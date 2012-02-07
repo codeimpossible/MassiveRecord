@@ -12,11 +12,11 @@
     public class MassiveContextBase : DynamicModel {
         private IDictionary<FilterType, List<Action<dynamic>>> bound_filters = null;
 
-        public MassiveContextBase( MassiveRecord.DynamicTable.ISettings config,
-                                    IDictionary<FilterType, List<Action<dynamic>>> filters = null ) :
-            this( config.ConnectionString, filters ) {
+        public MassiveContextBase( MassiveRecord.DynamicTable.ISettings config ) :
+            this( config.ConnectionString ) {
             TableName = config.Table;
             PrimaryKeyField = config.PrimaryKey;
+            bound_filters = config.Filters;
         }
         public MassiveContextBase( string connectionStringName,
                                     IDictionary<FilterType, List<Action<dynamic>>> filters = null ) :
@@ -70,9 +70,6 @@
     }
 
     public static class DynamicTable {
-        private readonly static IDictionary<String, IDictionary<FilterType, List<Action<dynamic>>>> filters =
-            new Dictionary<String, IDictionary<FilterType, List<Action<dynamic>>>>();
-
         private readonly static IDictionary<String, ISettings> settings = new Dictionary<String, ISettings>();
 
         // interfaces for our "mini fluent interface"
@@ -86,10 +83,15 @@
             string Table { get; set; }
             string ConnectionString { get; set; }
             string PrimaryKey { get; set; }
+
+            ISettings BeforeSave( Action<dynamic> filter );
+            ISettings BeforeDelete( Action<dynamic> filter );
+            IDictionary<FilterType, List<Action<dynamic>>> Filters { get;  }
         }
 
         // configurator implements them all we just cast it around
         public class DynamicTableConfigurator : IWhenAskedFor, IUse, ISettings {
+            private IDictionary<FilterType, List<Action<dynamic>>> filters = new Dictionary<FilterType, List<Action<dynamic>>>();
             public IUse WhenAskedFor( string table ) { Type = table; return this; }
 
             public ISettings Use( Action<ISettings> use ) {
@@ -101,6 +103,21 @@
             public string Table { get; set; }
             public string ConnectionString { get; set; }
             public string PrimaryKey { get; set; }
+
+            public IDictionary<FilterType, List<Action<dynamic>>> Filters { get { return filters; } }
+
+            public ISettings BeforeSave( Action<dynamic> filter ) {
+                return AddFilter( FilterType.BeforeSave, filter );
+            }
+            public ISettings BeforeDelete( Action<dynamic> filter ) {
+                return AddFilter( FilterType.BeforeDelete, filter );
+            }
+            public ISettings AddFilter( FilterType type, Action<dynamic> filter ) {
+                if( filters.ContainsKey( type ) ) {
+                    filters[ type ].Add( filter );
+                } else filters.Add( type, new List<Action<dynamic>> { filter } );
+                return this;
+            }
         }
 
         public static void Configure( Func<IWhenAskedFor, ISettings> config ) {
@@ -109,22 +126,13 @@
         }
 
         public static dynamic Create( string table, string connectionString = null, string primaryKey = "Id" ) {
-            var table_filters = filters.ContainsKey( table ) ? filters[ table ] : null;
             MassiveContextBase context = null;
             if( settings.ContainsKey( table ) )
                 context = new MassiveContextBase( settings[ table ] );
-            return context ?? new MassiveContextBase( connectionString, table_filters ) {
+            return context ?? new MassiveContextBase( connectionString ) {
                 TableName = table,
                 PrimaryKeyField = primaryKey
             };
-        }
-
-        public static void RegisterFilter( FilterType type, string tableName, Action<dynamic> filter ) {
-            if( filters.ContainsKey( tableName ) ) {
-                if( filters[ tableName ].ContainsKey( type ) ) {
-                    filters[ tableName ][ type ].Add( filter );
-                } else filters[ tableName ].Add( type, new List<Action<dynamic>>() );
-            } else filters.Add( tableName, new Dictionary<FilterType, List<Action<dynamic>>> { { type, new List<Action<dynamic>> { filter } } } );
         }
     }
 }
