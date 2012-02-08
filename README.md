@@ -46,6 +46,8 @@ What if you wanted to specify a configuration that MassiveRecord should use ever
         s.ConnectionString = "Test";
         s.PrimaryKey = "ContactID";
         s.Table = "Person.Contact";
+        s.BeforeSave( user => user.FirstName = user.FirstName.ToUpper() )
+         .BeforeSave( user => user.LastName = user.LastName.ToUpper() );
     }));
 
     // in your controller or other class file do the following
