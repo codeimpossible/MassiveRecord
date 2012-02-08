@@ -31,12 +31,29 @@ Pretty clean, right? Yeah I think so too. But that's not enough. What if we want
 Okay... what if we wanted to have the `FirstName` capitalized every time we save a contact? Normally we'd have to override the BeforeSave method in our `Contacts` class. With MassiveRecord it takes 1 line of code:
 
 ```csharp
-    DynamicTable.RegisterBeforeSaveFilter( "Person.Contact", 
+    DynamicTable.RegisterFilter( FilterType.BeforeSave, "Person.Contact",
                                            user => user.FirstName = user.FirstName.ToUpper() );
 ```
 
 Yeah, it's *that* easy.
 
+
+What if you wanted to specify a configuration that MassiveRecord should use everytime it creates a specific table? No problem, we even added a nifty mini fluent interface to help you out:
+
+```csharp
+    // in your Global.asax or some other startup class, include this code
+    DynamicTable.Configure( c => c.WhenAskedFor("Users").Use( s => {
+        s.ConnectionString = "Test";
+        s.PrimaryKey = "ContactID";
+        s.Table = "Person.Contact";
+        s.BeforeSave( user => user.FirstName = user.FirstName.ToUpper() )
+         .BeforeSave( user => user.LastName = user.LastName.ToUpper() );
+    }));
+
+    // in your controller or other class file do the following
+    var usersTable = DynamicTable.Create("Users");
+    var users = usersTable.FindByEmail("myuser@test.com"); // BOOM!
+```
 
 ## Installation
 
