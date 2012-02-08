@@ -47,9 +47,9 @@ What if you wanted to specify a configuration that MassiveRecord should use ever
         s.PrimaryKey = "ContactID";
         s.Table = "Person.Contact";
     }));
-    
+
     // in your controller or other class file do the following
-    var usersTable = DynamicTable.Create("Users"); 
+    var usersTable = DynamicTable.Create("Users");
     var users = usersTable.FindByEmail("myuser@test.com"); // BOOM!
 ```
 

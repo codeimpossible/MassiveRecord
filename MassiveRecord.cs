@@ -1,5 +1,6 @@
 ﻿namespace MassiveRecord {
     using System;
+    using System.Linq;
     using System.Collections.Generic;
     using System.Reflection;
     using System.Text;
@@ -11,20 +12,24 @@
 
     public class MassiveContextBase : DynamicModel {
         private IDictionary<FilterType, List<Action<dynamic>>> bound_filters = null;
+        private IDictionary<String, Func<dynamic, bool>> bound_validators = null;
 
         public MassiveContextBase( MassiveRecord.DynamicTable.ISettings config ) :
             this( config.ConnectionString ) {
             TableName = config.Table;
             PrimaryKeyField = config.PrimaryKey;
             bound_filters = config.Filters;
+            bound_validators = config.Validators;
         }
         public MassiveContextBase( string connectionStringName,
-                                    IDictionary<FilterType, List<Action<dynamic>>> filters = null ) :
+                                    IDictionary<FilterType, List<Action<dynamic>>> filters = null,
+                                    IDictionary<String, Func<dynamic, bool>> validators = null ) :
             base( connectionStringName ) {
             bound_filters = filters ?? new Dictionary<FilterType, List<Action<dynamic>>> {
                     { FilterType.BeforeSave, new List<Action<dynamic>>() },
                     { FilterType.BeforeDelete, new List<Action<dynamic>>() }
                 };
+            bound_validators = validators ?? new Dictionary<String, Func<dynamic, bool>>();
         }
 
         public void RegisterFilter( FilterType type, Action<dynamic> filter ) {
@@ -39,6 +44,10 @@
         public override bool BeforeDelete( dynamic item ) {
             bound_filters[ FilterType.BeforeDelete ].ForEach( a => a( item ) );
             return true;
+        }
+
+        public override void Validate( dynamic item ) {
+            Errors = Errors.Concat( bound_validators.Where( v => v.Value(item) ).Select( v => v.Key )).ToList();
         }
 
         public override bool TryInvokeMember( System.Dynamic.InvokeMemberBinder binder, object[] args, out object result ) {
@@ -86,12 +95,18 @@
 
             ISettings BeforeSave( Action<dynamic> filter );
             ISettings BeforeDelete( Action<dynamic> filter );
-            IDictionary<FilterType, List<Action<dynamic>>> Filters { get;  }
+            IDictionary<FilterType, List<Action<dynamic>>> Filters { get; }
+            IDictionary<String, Func<dynamic, bool>> Validators { get; set; }
         }
 
         // configurator implements them all we just cast it around
         public class DynamicTableConfigurator : IWhenAskedFor, IUse, ISettings {
             private IDictionary<FilterType, List<Action<dynamic>>> filters = new Dictionary<FilterType, List<Action<dynamic>>>();
+
+            public DynamicTableConfigurator() {
+                Validators = new Dictionary<String, Func<dynamic, bool>>();
+            }
+
             public IUse WhenAskedFor( string table ) { Type = table; return this; }
 
             public ISettings Use( Action<ISettings> use ) {
@@ -105,6 +120,8 @@
             public string PrimaryKey { get; set; }
 
             public IDictionary<FilterType, List<Action<dynamic>>> Filters { get { return filters; } }
+
+            public IDictionary<String, Func<dynamic, bool>> Validators { get; set; }
 
             public ISettings BeforeSave( Action<dynamic> filter ) {
                 return AddFilter( FilterType.BeforeSave, filter );
